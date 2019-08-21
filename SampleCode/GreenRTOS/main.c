@@ -71,6 +71,16 @@ static void vTimerTask( void *pvParameters )
 							sysprintf("Mutex data %x %x\r\n", mutex_data[0], mutex_data[1]);
 					 }
 					 M_GRTOSMutexUnlock();
+					 
+#if 0					 
+					 //EXCEPTION dump test
+					 if (timer_count == 20000)
+					 {
+							M_GRTOS_TASK_MAIN ef;
+						  ef = (M_GRTOS_TASK_MAIN)0x30000;
+							ef(0);
+					 }
+#endif					 
 				}		
     }
 }

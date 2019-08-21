@@ -502,6 +502,11 @@
               <FileType>5</FileType>
               <FilePath>..\..\..\ThirdParty\GreenRTOS\m_type.h</FilePath>
             </File>
+            <File>
+              <FileName>grtos_exception.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\ThirdParty\GreenRTOS\grtos_exception.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

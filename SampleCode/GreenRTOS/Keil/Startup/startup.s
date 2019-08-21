@@ -7,6 +7,11 @@
     ;
 
     AREA NUC_INIT, CODE, READONLY
+		
+	IMPORT  Undefined_UserHandler
+	IMPORT  Prefetch_UserHandler
+	IMPORT  Abort_UserHandler
+	IMPORT  FIQ_UserHandler
 
 ;--------------------------------------------
 ; Mode bits and interrupt flag (I&F) defines
@@ -38,6 +43,7 @@ REG_AIC_MDCRH   EQU     0xB800213C  ; Mask disable command register (High)
 
     ENTRY
     IMPORT  vPortYieldProcessor
+		
     EXPORT  Reset_Go
 
         EXPORT  Vector_Table
@@ -65,22 +71,63 @@ FIQ_Addr        DCD     FIQ_Handler
         ; ************************
         ; Exception Handlers
         ; ************************
+		
 
         ; The following dummy handlers do not do anything useful in this example.
         ; They are set up here for completeness.
-
+		PRESERVE8
 Undefined_Handler
-        B       Undefined_Handler
+        ;B       Undefined_Handler
+		SUB     LR, LR, #8
+		STMFD   SP!, {R0-R12, LR}
+		MRS     R1, SPSR
+		STMFD   SP!, {R1}
+		MOV 	R0, LR
+		B      Undefined_UserHandler
+		LDMFD   SP!, {R1}
+		MSR     SPSR_CXSF, R1
+		LDMFD   SP!, {R0-R12, PC}^
+		B       Undefined_Handler	
 SWI_Handler1
         B       SWI_Handler1
 Prefetch_Handler
-        B       Prefetch_Handler
+        ;B       Prefetch_Handler
+		SUB     LR, LR, #8
+		STMFD   SP!, {R0-R12, LR}
+		MRS     R1, SPSR
+		STMFD   SP!, {R1}
+		MOV 	R0, LR
+		BL      Prefetch_UserHandler
+		LDMFD   SP!, {R1}
+		MSR     SPSR_CXSF, R1
+		LDMFD   SP!, {R0-R12, PC}^
+		B       Prefetch_Handler			
 Abort_Handler
-        B       Abort_Handler
+        ;B       Abort_Handler
+		SUB     LR, LR, #8
+		STMFD   SP!, {R0-R12, LR}
+		MRS     R1, SPSR
+		STMFD   SP!, {R1}
+		MOV 	R0, LR
+		BL      Abort_UserHandler
+		LDMFD   SP!, {R1}
+		MSR     SPSR_CXSF, R1
+		LDMFD   SP!, {R0-R12, PC}^
+		B       Abort_Handler			
 IRQ_Handler
         B       IRQ_Handler
 FIQ_Handler
-        B       FIQ_Handler
+        ;B       FIQ_Handler
+		SUB     LR, LR, #8
+		STMFD   SP!, {R0-R12, LR}
+		MRS     R1, SPSR
+		STMFD   SP!, {R1}
+		MOV 	R0, LR
+		BL      FIQ_UserHandler
+		LDMFD   SP!, {R1}
+		MSR     SPSR_CXSF, R1
+		LDMFD   SP!, {R0-R12, PC}^
+		B       FIQ_Handler			
 
 
 Reset_Go
