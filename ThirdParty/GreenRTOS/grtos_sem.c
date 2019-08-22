@@ -84,8 +84,15 @@ mt_s32 M_GRTOSSemTake(m_pgrtos_sem pm, mt_u32 tout)
 	}
 	else	//not valid
 	{
-		pc =  M_GRTOSTaskCurrent();
+		//not wait, return
+		if (tout == 0)
+		{
+			M_GRTOSIRQEnable(1);
+			return EC_TOUT;
+		}
 		
+		pc =  M_GRTOSTaskCurrent();
+				
 		//record to task
 		pc->wait_psem = pm;
 		pc->wait_tick_out = M_GRTOSGetTickCount() + tout;

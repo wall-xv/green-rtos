@@ -60,7 +60,10 @@ typedef struct m_grtos_task
 	mt_u16 							tick_cpu_hold_last;
 	
 	//
-	mt_s16							err_code;
+	mt_s8							err_code;
+	mt_s8							need_delete;
+	mt_s8							tcb_is_alloc;
+	mt_s8							stack_is_alloc;
 } m_grtos_task, *m_pgrtos_task;
 
 
@@ -75,6 +78,8 @@ typedef struct m_grtos_global
 		定时器也在队列里面检查
 	*/
 	m_grtos_task		dlh_task;
+	
+	m_pgrtos_task		ph_idle;
 } m_grtos_global, *m_pgrtos_global;
 
 extern m_grtos_global	g_grtos_global;
@@ -94,7 +99,6 @@ mt_s32 M_GRTOSTaskCreate(	M_GRTOS_TASK_MAIN main,
 							const mt_pv  pdata,
 							mt_u32 priority,
 							mt_pv * phand);
-mt_s32 M_GRTOSTaskDestory(mt_pv phand);
 m_pgrtos_task M_GRTOSTaskCurrent(void);
 mt_s32 M_GRTOSTaskChangeCurrent( void );
 mt_s32 M_GRTOSTaskSwitch(void);

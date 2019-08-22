@@ -17,6 +17,29 @@ int			g_isr_mode = 0;
 
 mt_pu8 pxPortInitialiseStack( mt_pu8 pxTopOfStack, M_GRTOS_TASK_MAIN pxCode, mt_pv pvParameters );
 
+
+static void M_GRTOSMain( void *pv )
+{
+	m_pgrtos_task pc;
+	
+	if (pv == 0)
+	{
+		return ;
+	}
+	
+	pc = (m_pgrtos_task)pv;
+	
+	pc->main(pc->pdata);
+	
+	//delete myself
+	pc->need_delete = 1;
+	
+	//delete when switch
+	M_GRTOSTaskSwitch();
+	
+	while (1) {;}
+}
+
 mt_s32 M_GRTOSTaskInit(	m_pgrtos_task pc,
 							M_GRTOS_TASK_MAIN main,
 							mt_pcch name,
@@ -34,7 +57,13 @@ mt_s32 M_GRTOSTaskInit(	m_pgrtos_task pc,
 	pc->priority	= priority;
 	pc->tick_cpu_hold_cur = 0;
 	pc->tick_cpu_hold_last = 0;
-
+	
+	//flags
+	pc->err_code = 0;
+	pc->need_delete = 0;
+	pc->stack_is_alloc = 1;
+	pc->tcb_is_alloc = 0;
+	
 	M_GRTOSIRQEnable(0);
 
 	if (pxCurrentTCB == 0)
@@ -48,29 +77,16 @@ mt_s32 M_GRTOSTaskInit(	m_pgrtos_task pc,
 	DLIST_INIT_C(pc);
 	DLIST_ADD_C(&g_pgrtos_global->dlh_task, pc);
 
-	M_GRTOSIRQEnable(1);
-
 	//alloc stack
 	pc->stack_pbuf = M_GRTOSMMAlloc(pc->stack_size);
 	if (pc->stack_pbuf)
 	{
 		//init stack
-		pc->stack_ptop = pxPortInitialiseStack( pc->stack_pbuf + pc->stack_size, pc->main, pc->pdata );
+		//pc->stack_ptop = pxPortInitialiseStack( pc->stack_pbuf + pc->stack_size, pc->main, pc->pdata );
+		pc->stack_ptop = pxPortInitialiseStack( pc->stack_pbuf + pc->stack_size, M_GRTOSMain, pc );
 	}
 
-	RET_OK;
-}
-
-mt_s32 M_GRTOSTaskDeinit(	m_pgrtos_task pc )
-{
-	CHK_ERR(pc);
-
-	if (pxCurrentTCB == pc)
-	{
-		pxCurrentTCB = (m_pgrtos_task)pc->next;
-	}
-
-	DLIST_DEL_C(pc);
+	M_GRTOSIRQEnable(1);
 
 	RET_OK;
 }
@@ -88,6 +104,7 @@ mt_s32 M_GRTOSTaskCreate(	M_GRTOS_TASK_MAIN main,
 	if (pc)
 	{
 		M_GRTOSTaskInit(pc, main, name, stack_size, pdata, priority);
+		pc->tcb_is_alloc = 1;
 	}
 
 	if (phand)
@@ -98,13 +115,21 @@ mt_s32 M_GRTOSTaskCreate(	M_GRTOS_TASK_MAIN main,
 	RET_OK;
 }
 
-mt_s32 M_GRTOSTaskDestory(mt_pv pc)
+static mt_s32 M_GRTOSTaskDelete( m_pgrtos_task pc )
 {
 	CHK_ERR(pc);
 
-	M_GRTOSTaskDeinit(pc);
-
-	M_GRTOSMMFree(pc);
+	DLIST_DEL_C(pc);
+	
+	if (pc->stack_is_alloc)
+	{
+		M_GRTOSMMFree(pc->stack_pbuf);
+	}
+	
+	if (pc->tcb_is_alloc)
+	{
+		M_GRTOSMMFree(pc);
+	}	
 
 	RET_OK;
 }
@@ -141,6 +166,18 @@ mt_s32 vTaskSwitchContext()
 		if (pb == (m_pgrtos_task)&g_grtos_global.dlh_task)
 		{
 			break;
+		}
+		
+		//delete 
+		if (pb->need_delete)
+		{
+			if (pxCurrentTCB == pb)
+			{
+				pxCurrentTCB = g_grtos_global.ph_idle;
+			}
+			
+			M_GRTOSTaskDelete(pb);
+			continue;
 		}
 		
 		//all set to OK
@@ -279,7 +316,7 @@ static void MainDebug_SYS( void *pvParameters )
 mt_s32 xPortStartScheduler( void );
 void M_GRTOSStartScheduler()
 {
-  M_GRTOSTaskCreate( MainIdel_SYS, 	"SYS_Idel", 	256, 	NULL, 0, NULL );
+  M_GRTOSTaskCreate( MainIdel_SYS, 	"SYS_Idel", 	256, 	NULL, 0, (void**)&g_grtos_global.ph_idle );
 
 #ifdef _DEBUG	
   M_GRTOSTaskCreate( MainDebug_SYS, "SYS_Debug", 	1024, NULL, 1, NULL );

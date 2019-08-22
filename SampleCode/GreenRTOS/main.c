@@ -85,6 +85,18 @@ static void vTimerTask( void *pvParameters )
     }
 }
 
+static void vSnapTask( void *pvParameters )
+{
+	int sleep_ms;
+	/* Parameters are not used. */
+	
+	sleep_ms = (int)pvParameters;
+	sleep_ms = sleep_ms*100;
+	M_GRTOSSleep(sleep_ms);
+	
+	M_GRTOSSemGave(g_sem);
+	sysprintf("Snap finished %d\r\n", sleep_ms);
+}
 
 static void vSleepTask( void *pvParameters )
 {
@@ -99,7 +111,9 @@ static void vSleepTask( void *pvParameters )
 		M_GRTOSMutexLock();
 		mutex_data[1] = sleep_count;
 		mutex_data[0] = ~mutex_data[1];
-	 M_GRTOSMutexUnlock();		
+		M_GRTOSMutexUnlock();		
+		
+		M_GRTOSTaskCreate( vSnapTask, "Snap", 1024, (mt_pv)(sleep_count%15), 6, NULL );
 	}
 }
 /*
